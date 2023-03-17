@@ -21,9 +21,9 @@ myMQTTClient.configureMQTTOperationTimeout(5)
 
 print("initiating topic...")
 myMQTTClient.connect()
-
+myMQTTClient.subscribe("fish_cam", 1, fish_data_recieving)
 while True:
-	time.sleep(5)
+	time.sleep(1)
 	
-	mqtt_data = myMQTTClient.subscribe("home/fish_data", 1, fish_data_recieving)
+	
 	

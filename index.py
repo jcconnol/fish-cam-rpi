@@ -1,10 +1,19 @@
 from RPLCD import CharLCD
 import RPi.GPIO as GPIO
+from picamera import PiCamera
 import os
 import glob
 import time
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
+import boto3
+import json
 
+client = boto3.client('s3', 
+	aws_access_key_id=os.environ["AWS_SERVER_PUBLIC_KEY"], 
+	aws_secret_access_key=os.environ["AWS_SERVER_SECRET_KEY"], 
+region_name='us-east-2')
+
+camera = PiCamera()
 
 ############## TEMPERATURE FUNCTIONS ###############
 
@@ -48,6 +57,7 @@ def read_temp():
 ############## PICTURE ###############
 
 IMAGE_PATH = 'fish_pic.jpg'
+JSON_FILE_PATH = 'fish-cam.json'
 BUCKET_NAME = 'fish-cam'
 
 def get_base64_encoded_image(image_path):
@@ -55,37 +65,30 @@ def get_base64_encoded_image(image_path):
         return base64.b64encode(img_file.read()).decode('utf-8')
 
 def take_picture():
-	camera = PiCamera()
+	if os.path.exists(IMAGE_PATH):
+		os.remove(IMAGE_PATH)
+		
 	camera.start_preview()
 	camera.capture(IMAGE_PATH)
 
-	sleep(1)
+	time.sleep(0.5)
+	print("start preview")
 
 	camera.stop_preview()
-	return get_base64_encoded_image(IMAGE_PATH)
 
 
 def s3_image_upload():
-	client = boto3.client('s3', 
-		aws_access_key_id=os.environ["AWS_SERVER_PUBLIC_KEY"], 
-		aws_secret_access_key=os.environ["AWS_SERVER_SECRET_KEY"], 
-		region_name='us-east-2')
-
-	client.upload_file(IMAGE_PATH, 'fish-cam', IMAGE_PATH)
+	client.upload_file(IMAGE_PATH, BUCKET_NAME, IMAGE_PATH)
 
 
 
-def upload_s3_json(json_data):
-	client = boto3.client('s3', 
-		aws_access_key_id=os.environ["AWS_SERVER_PUBLIC_KEY"], 
-		aws_secret_access_key=os.environ["AWS_SERVER_SECRET_KEY"], 
-		region_name='us-east-2')
-		
-	
-		
-	s3_object = s3.Object(BUCKET_NAME, 'fish_cam.json')
-	s3_object.put(
-		Body=(bytes(json.dumps(json_data).encode('UTF-8')))
+def upload_s3_json(json_data):	
+	print(json_data)	
+	#s3_object = s3_client.Object(BUCKET_NAME, 'fish_cam.json')
+	client.put_object(
+		Body=(bytes(json.dumps(json_data).encode('UTF-8'))),
+		Bucket=BUCKET_NAME, 
+		Key=JSON_FILE_PATH
 	)
 
 
@@ -102,10 +105,17 @@ def fish_data_recieving(self, params, packet):
 		"temp_f": temp
 	}
 	
+	print(fish_json_data)
+	
 	upload_s3_json(fish_json_data)
+	print("json uploaded")
 	
 	take_picture()
+	print("picture taken!")
+	
 	s3_image_upload()
+	
+	print("upload complete!")
 
 
 print("run")
@@ -123,7 +133,7 @@ myMQTTClient.configureMQTTOperationTimeout(5)
 print("initiating topic...")
 
 myMQTTClient.connect()
-myMQTTClient.subscribe("home/fish_data", 1, fish_data_recieving)
+myMQTTClient.subscribe("fish_cam", 1, fish_data_recieving)
 
 
 
@@ -151,12 +161,12 @@ lcd = CharLCD(numbering_mode=GPIO.BOARD, cols=16, rows=2, pin_rs=37, pin_e=35, p
 lcd.create_char(0, degree_symbol)
 
 while(True):
-	lcd_string = " Temp: " + read_temp() + chr(0) + "F"
-	lcd.cursor_pos = (0, 0) 
-	lcd.write_string(lcd_string)
-	time.sleep(5)
-	lcd.clear()
-	time.sleep(1)
+	#lcd_string = " Temp: " + read_temp() + chr(0) + "F"
+	#lcd.cursor_pos = (0, 0) 
+	#lcd.write_string(lcd_string)
+	time.sleep(0.5)
+	#lcd.clear()
+	#time.sleep(1)
 	
 
 	

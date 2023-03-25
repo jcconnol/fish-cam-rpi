@@ -3,8 +3,29 @@ from time import sleep
 import base64
 import boto3
 import os
+from PIL import Image
 
 IMAGE_PATH = 'fish_pic.jpg'
+
+def compressMe(file, verbose = False):
+    
+      # Get the path of the file
+    filepath = os.path.join(os.getcwd(), 
+                            file)
+      
+    # open the image
+    picture = Image.open(filepath)
+      
+    # Save the picture with desired quality
+    # To change the quality of image,
+    # set the quality variable at
+    # your desired level, The more 
+    # the value of quality variable 
+    # and lesser the compression
+    picture.save(file, 
+                 "JPEG", 
+                 optimize = True, 
+                 quality = 10)
 
 def get_base64_encoded_image(image_path):
     with open(image_path, "rb") as img_file:
@@ -20,13 +41,13 @@ try:
     sleep(0.5)
 
     camera.stop_preview()
+    compressMe(IMAGE_PATH)
     pass
 finally:
     camera.close()
     
 
 
-print(len(get_base64_encoded_image(IMAGE_PATH)))
 
 
 

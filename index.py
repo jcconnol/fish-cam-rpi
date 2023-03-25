@@ -7,6 +7,8 @@ import time
 from AWSIoTPythonSDK.MQTTLib import AWSIoTMQTTClient
 import boto3
 import json
+from datetime import datetime
+from PIL import Image
 
 client = boto3.client('s3', 
 	aws_access_key_id=os.environ["AWS_SERVER_PUBLIC_KEY"], 
@@ -60,6 +62,26 @@ IMAGE_PATH = 'fish_pic.jpg'
 JSON_FILE_PATH = 'fish-cam.json'
 BUCKET_NAME = 'fish-cam'
 
+def compressMe(file, verbose = False):
+    
+      # Get the path of the file
+    filepath = os.path.join(os.getcwd(), 
+                            file)
+      
+    # open the image
+    picture = Image.open(filepath)
+      
+    # Save the picture with desired quality
+    # To change the quality of image,
+    # set the quality variable at
+    # your desired level, The more 
+    # the value of quality variable 
+    # and lesser the compression
+    picture.save(file, 
+                 "JPEG", 
+                 optimize = True, 
+                 quality = 40)
+
 def get_base64_encoded_image(image_path):
     with open(image_path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode('utf-8')
@@ -75,6 +97,8 @@ def take_picture():
 	print("start preview")
 
 	camera.stop_preview()
+	
+	compressMe(IMAGE_PATH)
 
 
 def s3_image_upload():
@@ -102,7 +126,8 @@ def fish_data_recieving(self, params, packet):
 	temp = read_temp()
 	
 	fish_json_data = {
-		"temp_f": temp
+		"temp_f": temp,
+		"last_run_time": datetime.now().isoformat()
 	}
 	
 	print(fish_json_data)
